@@ -5,12 +5,12 @@
 import mysql.connector as m
 import tkinter as tk         # for GUI
 from tkinter import messagebox       # for popups
-
+from PIL import Image, ImageTk  # for image handling
 #-------------------------------------------------
 # Creating Connection & Confirmation of connection
 #--------------------------------------------------
 
-con = m.connect(host="localhost", user="root", password="262208", database="toyshop")  # while writing v5 i found a bug where writing it here would cause an error if the database doesn't exist yet, so I moved it to after the database creation code in v5.py
+con = m.connect(host="localhost", user="root", password="262208")
 
 if con.is_connected():
     print("Connection successful")
@@ -241,29 +241,73 @@ def open_cart_window():
 # --------------------------
 # CHECKOUT / BUY ITEMS
 # --------------------------
+
 def checkout(window):
     if not cart:
         messagebox.showerror("Empty Cart", "Your cart is empty!")
         return
 
-    invoice = "--------- INVOICE ---------\n\n"
+    window.destroy()
+
+    for widget in root.winfo_children():
+        widget.destroy()
+
+    # ---- title ----
+    tk.Label(root, text="Payment", font=("Arial", 16, "bold")).pack(pady=10)
+
+    # ---- main frame to hold left and right ----
+    main_frame = tk.Frame(root)
+    main_frame.pack(pady=10)
+
+    # ---- LEFT: QR Code ----
+    left_frame = tk.Frame(main_frame, padx=20)
+    left_frame.pack(side="left")
+
+    tk.Label(left_frame, text="Scan to Pay", font=("Arial", 12, "bold")).pack(pady=5)
+
+    img = Image.open("QrC.jpeg")
+    img = img.resize((200, 200))
+    photo = ImageTk.PhotoImage(img)
+    qr_label = tk.Label(left_frame, image=photo)
+    qr_label.image = photo
+    qr_label.pack()
+
+    # ---- RIGHT: Bill breakdown ----
+    right_frame = tk.Frame(main_frame, padx=20, bg="#f0f0f0")
+    right_frame.pack(side="left", fill="both")
+
+    tk.Label(right_frame, text="Order Summary", font=("Arial", 12, "bold"), bg="#f0f0f0").pack(pady=5)
+
     total = 0
+    invoice = "--------- INVOICE ---------\n\n"
 
     for toy, qty in cart.items():
         price = toys[toy] * qty
         total += price
         invoice += f"{toy} x {qty} = ₹{price}\n"
+        tk.Label(right_frame, text=f"{toy} x{qty}  →  ₹{price}",
+                 font=("Arial", 10), bg="#f0f0f0", anchor="w").pack(fill="x", pady=2)
 
-    invoice += f"\nTOTAL = ₹{total}\n\nThank you for shopping!"
+    tax = int(total * 0.10)
+    grand_total = total + tax
 
-    messagebox.showinfo("Invoice", invoice)
+    invoice += f"\nProject Making Tax (10%) = ₹{tax}"
+    invoice += f"\nGRAND TOTAL = ₹{grand_total}\n\nThank you for shopping! 🎉"
 
-    cart.clear()
-    window.destroy()
+    tk.Label(right_frame, text="─" * 25, bg="#f0f0f0").pack()
+    tk.Label(right_frame, text=f"Project Tax (10%): ₹{tax}",
+             font=("Arial", 10), bg="#f0f0f0", fg="gray").pack()
+    tk.Label(right_frame, text=f"Total: ₹{grand_total}",
+             font=("Arial", 13, "bold"), bg="#f0f0f0").pack(pady=5)
 
-    # go back to shop page
-    open_customer_interface(current_user)
+    # ---- Done button ----
+    def done():
+        cart.clear()
+        messagebox.showinfo("Thank You!", invoice)
+        open_customer_interface(current_user)
 
+    tk.Button(root, text="✅ Done!", font=("Arial", 12),
+              bg="lightgreen", command=done).pack(pady=15)
 
 # --------------------------
 # CUSTOMER INTERFACE
